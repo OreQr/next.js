@@ -113,15 +113,17 @@ export class SharedPlaywrightState {
     return context
   }
 
-  async update(newOptions: BrowserContextOptions) {
-    let contextOptionChanged = false
-    for (const [key, value] of Object.entries(newOptions)) {
-      if (this.contextOptions[key] !== value) {
-        contextOptionChanged = true
-      }
-    }
+  async canUpdateAndReuse(browserOptions: BrowserOptions) {
+    // if a browser configuration option changed, we have to recreate the whole state.
+    return !SharedPlaywrightState.optionChanged(
+      this.browserOptions,
+      browserOptions
+    )
+  }
 
-    if (contextOptionChanged) {
+  async update(newOptions: BrowserContextOptions) {
+    // if a browser context configuration option changed, we have to recreate the context.
+    if (SharedPlaywrightState.optionChanged(this.contextOptions, newOptions)) {
       await this.closeContext()
 
       this.context = await SharedPlaywrightState.createBrowserContext(
@@ -131,6 +133,19 @@ export class SharedPlaywrightState {
       )
       this.contextOptions = newOptions
     }
+  }
+
+  private static optionChanged<T extends Record<string, any>>(
+    prev: T,
+    current: T
+  ): boolean {
+    for (const [key, prevValue] of Object.entries(prev)) {
+      const currentValue = current[key]
+      if (currentValue !== prevValue) {
+        return true
+      }
+    }
+    return false
   }
 
   async destroy() {

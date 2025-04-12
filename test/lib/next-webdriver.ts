@@ -158,18 +158,22 @@ export default async function webdriver(
     userAgent,
     deviceName: process.env.DEVICE_NAME || undefined,
   }
+
   if (!sharedState) {
     sharedState = await SharedPlaywrightState.create(
       browserOptions,
       browserContextOptions
     )
   } else {
-    if (sharedState.browserOptions.headless !== browserOptions.headless) {
-      console.warn(
-        'Changing the value of `headless` between tests is currently not supported'
+    if (sharedState.canUpdateAndReuse(browserOptions)) {
+      await sharedState.update(browserContextOptions)
+    } else {
+      await sharedState.destroy()
+      sharedState = await SharedPlaywrightState.create(
+        browserOptions,
+        browserContextOptions
       )
     }
-    await sharedState.update(browserContextOptions)
   }
 
   const browser = new Playwright(sharedState)
